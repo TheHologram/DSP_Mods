@@ -298,8 +298,12 @@ def showWindow(visible=True, reset=False):
                 state = self.state
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
-                self.PreventMouseInputs(state.windowRect)
-                self.PreventMouseInputs(state.tooltipRect)
+                if state.enabled and state.visible:
+                    # limit amount of mouse override
+                    mouseRect = UnityEngine.Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, min(state.windowRect.height, 400))
+                    self.PreventMouseInputs(mouseRect)
+                    if self.lasttooltip:
+                        self.PreventMouseInputs(state.tooltipRect)
             except Exception, e:
                 self.PrintError(e)
 
