@@ -66,8 +66,11 @@ class GlobalInspect(BaseScreenEditor):
             state.itembox = ScrollView(height=500)
             state.show_items = False
             state.show_mecha = False
+            state.show_history = False
             def getMecha():
                 return GameMain.mainPlayer.mecha
+            def getHistory():
+                return GameMain.mainPlayer.mecha.lab.gameHistory
             #state.core = FloatCtrlWrapper("Energy", GameMain.mainPlayer.mecha, "coreEnergy", maxname="coreEnergyCap", showMax=True)
             state.core = FloatCtrlWrapper("Energy", getMecha, "coreEnergy", maxname="coreEnergyCap", showMax=True)
             state.attrs = [
@@ -84,10 +87,26 @@ class GlobalInspect(BaseScreenEditor):
                 FloatCtrlWrapper("Max Warp Speed", getMecha, "maxWarpSpeed", showAdd=True),
                 FloatCtrlWrapper("Max Sail Speed", getMecha, "maxSailSpeed", showAdd=True),
             ]
+            state.history = [
+                FloatCtrlWrapper("Solar Sail Life", getHistory, "solarSailLife", showAdd=True),
+                FloatCtrlWrapper("Solar Energy Loss Rate", getHistory, "solarEnergyLossRate", showAdd=True),
+                FloatCtrlWrapper("Mining Speed Scale", getHistory, "miningSpeedScale", showAdd=True),
+                FloatCtrlWrapper("Mining Cost Rate", getHistory, "miningCostRate", showAdd=True),
+                FloatCtrlWrapper("Logistic Drone Carries", getHistory, "logisticDroneCarries", showAdd=True),
+                FloatCtrlWrapper("Logistic Drone Speed", getHistory, "logisticDroneSpeed", showAdd=True),
+                FloatCtrlWrapper("Logistic Drone Speed Scale", getHistory, "logisticDroneSpeedScale", showAdd=True),
+                FloatCtrlWrapper("Logistic Ship Carries", getHistory, "logisticShipCarries", showAdd=True),
+                FloatCtrlWrapper("Logistic Ship Speed", getHistory, "logisticShipSpeed", showAdd=True),
+                FloatCtrlWrapper("Logistic Ship Speed Scale", getHistory, "logisticShipSpeedScale", showAdd=True),
+                FloatCtrlWrapper("Logistic Ship Warp Speed", getHistory, "logisticShipWarpSpeed", showAdd=True),
+            ]
             
-            
+        
         if Toggle(state, 'show_mecha', "Show Mecha"):
             for ctrl in state.attrs:
+                ShowEditFloatCtrl(ctrl.label, ctrl)
+        if Toggle(state, 'show_history', "Show Globals"):
+            for ctrl in state.history:
                 ShowEditFloatCtrl(ctrl.label, ctrl)
             if ShowButtonWithLabel("Add Research:", "+100000"):
                 import GameMain
