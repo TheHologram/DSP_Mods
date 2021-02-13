@@ -239,7 +239,8 @@ def showWindow(visible=True, reset=False):
                 self.RefreshPanel()
 
                 # enumerate windows looking for interesting stuff
-                if Toggle(state, "show_windows", "Show Windows", defaultValue=False):
+                # TODO: disabled for now as its work in progress
+                if False and Toggle(state, "show_windows", "Show Windows", defaultValue=False):
                     if state.show_windows and state.windows:
                         for window in state.windows:
                             windowType = window.GetType().FullName

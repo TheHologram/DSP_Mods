@@ -66,18 +66,23 @@ class GlobalInspect(BaseScreenEditor):
             state.itembox = ScrollView(height=500)
             state.show_items = False
             state.show_mecha = False
-            state.core = FloatCtrlWrapper("Energy", GameMain.mainPlayer.mecha, "coreEnergy", maxname="coreEnergyCap", showMax=True)
+            def getMecha():
+                return GameMain.mainPlayer.mecha
+            #state.core = FloatCtrlWrapper("Energy", GameMain.mainPlayer.mecha, "coreEnergy", maxname="coreEnergyCap", showMax=True)
+            state.core = FloatCtrlWrapper("Energy", getMecha, "coreEnergy", maxname="coreEnergyCap", showMax=True)
             state.attrs = [
                 state.core,
-                FloatCtrlWrapper("Research", GameMain.mainPlayer.mecha, "researchPower", showAdd=True),
-                FloatCtrlWrapper("Replicate Speed", GameMain.mainPlayer.mecha, "replicateSpeed", showAdd=True),
-                FloatCtrlWrapper("Replicate Power", GameMain.mainPlayer.mecha, "replicatePower", showAdd=True),
-                FloatCtrlWrapper("Walk Speed", GameMain.mainPlayer.mecha, "walkSpeed", showAdd=True),
-                FloatCtrlWrapper("Walk Power", GameMain.mainPlayer.mecha, "walkPower", showAdd=True),
-                FloatCtrlWrapper("Mining Speed", GameMain.mainPlayer.mecha, "miningSpeed", showAdd=True),
-                FloatCtrlWrapper("Mining Power", GameMain.mainPlayer.mecha, "miningPower", showAdd=True),
-                FloatCtrlWrapper("Jump Speed", GameMain.mainPlayer.mecha, "jumpSpeed", showAdd=True),
-                FloatCtrlWrapper("Jump Power", GameMain.mainPlayer.mecha, "jumpPower", showAdd=True),
+                FloatCtrlWrapper("Research Power", getMecha, "researchPower", showAdd=True),
+                FloatCtrlWrapper("Replicate Speed", getMecha, "replicateSpeed", showAdd=True),
+                FloatCtrlWrapper("Replicate Power", getMecha, "replicatePower", showAdd=True),
+                FloatCtrlWrapper("Walk Speed", getMecha, "walkSpeed", showAdd=True),
+                FloatCtrlWrapper("Walk Power", getMecha, "walkPower", showAdd=True),
+                FloatCtrlWrapper("Mining Speed", getMecha, "miningSpeed", showAdd=True),
+                FloatCtrlWrapper("Mining Power", getMecha, "miningPower", showAdd=True),
+                FloatCtrlWrapper("Jump Speed", getMecha, "jumpSpeed", showAdd=True),
+                FloatCtrlWrapper("Jump Power", getMecha, "jumpPower", showAdd=True),
+                FloatCtrlWrapper("Max Warp Speed", getMecha, "maxWarpSpeed", showAdd=True),
+                FloatCtrlWrapper("Max Sail Speed", getMecha, "maxSailSpeed", showAdd=True),
             ]
             
             

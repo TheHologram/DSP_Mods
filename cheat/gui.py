@@ -8,6 +8,7 @@
 from __future__ import print_function
 from UnityEngine import GUI, GUILayout, GUIContent, GUILayoutOption
 import System
+import types
 
 def unity(func):
     """ Decorator for wrapping unity calls """
@@ -347,13 +348,17 @@ class FloatCtrlWrapper:
         for k,v in kwargs.iteritems():
             setattr(self, k, v)
     def get(self):
-        return getattr(self.owner, self.name, self.minv)
+        owner = self.owner() if isinstance(self.owner, types.FunctionType) else self.owner
+        return getattr(owner, self.name, self.minv)
     def set(self, value):
-        setattr(self.owner, self.name, value)
+        owner = self.owner() if isinstance(self.owner, types.FunctionType) else self.owner
+        setattr(owner, self.name, value)
     def min(self):
-        return getattr(self.owner, self.minname) if self.minname else self.minv
+        owner = self.owner() if isinstance(self.owner, types.FunctionType) else self.owner
+        return getattr(owner, self.minname) if self.minname else self.minv
     def max(self):
-        return getattr(self.owner, self.maxname) if self.maxname else self.maxv
+        owner = self.owner() if isinstance(self.owner, types.FunctionType) else self.owner
+        return getattr(owner, self.maxname) if self.maxname else self.maxv
 
 def ShowEditFloatCtrl(name, ctrl, refresh=None):
     with HorizontalScope():
