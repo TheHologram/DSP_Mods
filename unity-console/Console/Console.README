@@ -1,0 +1,127 @@
+Unity-Console
+===============
+
+Unity-Console is an IronPython-base Console for Unity
+
+==========================================================================
+1. What it does
+==========================================================================
+  
+  The libraries involved will enable opening a console which allows
+    user to run commands for inspecting global state of the Unity
+    application.
+    
+  It can be used to manipulate the game assets with some research
+  
+  You can also use it to load Python based mods that run in the background
+        
+==========================================================================
+2. How it works
+==========================================================================
+
+  The basic idea is to run custom code in unity that enables opening a 
+    console window that is under the control of this library.
+
+  Unity is not thread safe which means its not safe to perform actions
+    on Unity elements from the Console without additional actions.  This
+    is easier said than done but I have provided some support via the  
+    coroutine library.
+    
+  The library will allow python code to be run in unity in small pieces
+    this allows python to yield to for Unity to perform actions like 
+    redrawing the view and doing other actions that it needs.
+    
+==========================================================================
+3. Directory Structure Overview
+==========================================================================
+
+  \BepInEx\
+      The root folder managed by BepInEx.  Shared by BepInEx and plugins.
+      
+  \BepInEx\plugins\Unity.Console.BepInEx.dll
+      
+      
+      The current versions can be downloaded from here:
+        https://github.com/Eusth/IPA/releases
+  
+  \BepInEx\Console\
+      Folder for most of the plugin.  Unity.Console.Dll is hard
+      coded into the plugin above for launching.
+  
+  \BepInEx\Console\Lib\
+      This folder is the location for python based scripts.
+      
+             
+==========================================================================
+4. Installation
+==========================================================================
+
+    Prerequisites:
+      1. Download BepInEx 5 LTS version
+         
+         BepInEx_x64_5.4.5.0.zip was tested.
+           https://github.com/BepInEx/BepInEx/releases/download/v5.4.5/BepInEx_x64_5.4.5.0.zip
+           
+         The current versions can be downloaded from here:
+          https://github.com/BepInEx/BepInEx/releases
+          
+         More help on BepInEx
+          https://github.com/BepInEx/BepInEx/wiki/Installation 
+          
+      2. Unpack BepInEx to game folder so winhttp.dll is in same folder as DSPGAME.exe
+               
+      3. Test game still loads before adding console
+
+    Install:
+      1. Download the current version of UnityConsole
+        
+      2. Unpack to game folder.  BepInEx folder is already present so extract
+         to same folder as DSPGAME.exe
+      
+      3. Edit BepInEx\Console\Console.INI to your liking
+         Suggested to look at:
+         [Console]ShowKey=F12 # shortcut to open console
+         [Console]PersistHistory=0  # whether to save typed commands 
+         [Console]ShowAtStartup=0   # whether to show console at start
+         [Console]MoveToMonitor=-1  # have console open in another monitor if present
+      
+      4. Add python mods to BepInEx\Console\Mods\ 
+             
+==========================================================================
+5. Examples
+==========================================================================
+    
+    Console can be opened using ShowKey from the Console.ini
+    By default, this is F12 to toggle the console on and off
+    Console can be closed typing ^Z<return> or exit()<return>
+    
+    >>> import UnityEngine
+    >>> print UnityEngine.Application.unityVersion
+    '2018.4.12f1'
+    
+    There is an example mod in \BepInEx\Console\Mods\test
+      Its not very good and its old but it shows simple IMGUI behavior
+    
+==========================================================================
+6. TODO
+==========================================================================
+   
+  I'm sure there can be a lot done to improve some basic scripting libraries.
+  
+  Examples could be greatly expanded upon.
+  
+  Fix the issue with console not working correctly after being shutdown 
+  the first time on subsequent reopening.
+  
+==========================================================================
+7. Contact
+==========================================================================
+
+  The code is offered as-is for demonstration purposes.
+  
+  The author apologizes for not having time to maintain the code but
+    hopes that it is still useful to other users.
+
+  The official homepage:
+    https://github.com/TheHologram/unity-console
+  
