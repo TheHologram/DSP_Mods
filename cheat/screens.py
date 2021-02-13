@@ -105,19 +105,38 @@ class GlobalInspect(BaseScreenEditor):
         if Toggle(state, 'show_mecha', "Show Mecha"):
             for ctrl in state.attrs:
                 ShowEditFloatCtrl(ctrl.label, ctrl)
+        
         if Toggle(state, 'show_history', "Show Globals"):
             for ctrl in state.history:
                 ShowEditFloatCtrl(ctrl.label, ctrl)
             if ShowButtonWithLabel("Add Research:", "+100000"):
                 import GameMain
                 GameMain.mainPlayer.mecha.lab.gameHistory.AddTechHash(100000)
-        
+                
+        if Toggle(state, 'show_galaxy', "Show Galaxy"):
+            if ShowButtonWithLabel("Activate Screen", "Show"):
+                import galaxy; galaxy.showWindow()
+                
         with VerticalScope("", guistate.tinyskin.window):
             with HorizontalScope():
                 GUILayout.Label('Items')
                 state.show_items = GUILayout.Toggle(state.show_items, "Show")
             if state.show_items:
                 ShowItems(owner, state)
+                
+                
+class GalaxyInspect(BaseScreenEditor):
+    def __init__(self, *args, **kwargs):
+        BaseScreenEditor.__init__(self, *args, **kwargs)
+
+    def Show(self, owner, _):
+        guistate = owner.state.gui
+        #state = owner.state.screen_states["Replicator"]
+        if ShowButtonWithLabel("Build All", "Go"):
+            pass
+        
+        #for i,x in enumerate(LDB.veins): 
+        #    print x.ID, x.name, LDB.items.Select(x.MiningItem).name,   GameMain.localStar.GetResourceAmount(i)
             
 
 # Add optional things to Replicator (autocomplete?)
