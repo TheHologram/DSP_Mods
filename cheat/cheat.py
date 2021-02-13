@@ -221,6 +221,8 @@ def showWindow(visible=True, reset=False):
                 if GUILayout.Button("Min"):
                     state.minimize = True
                     self.StopPanelTimer()
+                if GUILayout.Button(GUIContent('Reload', 'Reloads Python Files from disk')):
+                    Reload()
                 if GUILayout.Button("X"):
                     if self.gameObject:
                         #state.visible = False
@@ -239,7 +241,7 @@ def showWindow(visible=True, reset=False):
                 self.RefreshPanel()
 
                 # enumerate windows looking for interesting stuff
-                if Toggle(state, "show_windows", "Show Windows", defaultValue=False):
+                if False and Toggle(state, "show_windows", "Show Windows", defaultValue=False):
                     if state.show_windows and state.windows:
                         for window in state.windows:
                             windowType = window.GetType().FullName
@@ -285,13 +287,19 @@ def showWindow(visible=True, reset=False):
             # self.useGUILayout = True
             pass
 
+        # call to consume mouse events from passing through after windows are processed
+        def PreventMouseInputs(self, rect):
+            if rect.Contains(Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)):
+                if Input.GetMouseButton(0) or Input.GetMouseButtonDown(0) or Input.mouseScrollDelta.y != 0:
+                    Input.ResetInputAxes()
+                    
         def OnGUI(self):
             try:
                 state = self.state
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
-                
-                #state.tooltipRect = Rect(0, state.windowRect.y, state.windowRect.width, 500)                
                 state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
+                self.PreventMouseInputs(state.windowRect)
+                self.PreventMouseInputs(state.tooltipRect)
             except Exception, e:
                 self.PrintError(e)
 
@@ -324,9 +332,9 @@ def showWindow(visible=True, reset=False):
     _cheatObject = unity_util.create_gui_behavior(Controller)
     return _cheatObject
 
-def onSceneChange():
-    import shortcuts, gui, screens, cheat
-    reload(shortcuts); reload(gui); reload(screens); reload(cheat); 
+def Reload():
+    import shortcuts, gui, screens, cheat, galaxy
+    reload(shortcuts); reload(gui); reload(screens); reload(cheat); reload(galaxy)
     cheat.showWindow(reset=False)
 
 @ShortcutManager.register(name='hide', shortcut='Ctrl+F8', cheat=False)

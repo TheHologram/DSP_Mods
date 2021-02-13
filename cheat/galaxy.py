@@ -17,6 +17,13 @@ from __future__ import print_function
 from gui import *
 from shortcuts import ShortcutManager, ShortcutHandler
 
+def WriteKMG(value):
+    import StringBuilderUtility
+    buffer = System.Text.StringBuilder(8)
+    buffer.Append(' ', 7)
+    StringBuilderUtility.WriteKMG(buffer, 6, value, True)
+    return buffer.ToString()
+
 def showWindow(visible=True, reset=False):
     import unity_util
     import UnityEngine
@@ -27,7 +34,7 @@ def showWindow(visible=True, reset=False):
     import System
     
     import UIGalaxySelect, GalaxyData, StarData, PlanetData, LDB, GameMain, StringBuilderUtility
-    import EPlanetType
+    import EPlanetType, PlanetModelingManager
     
     # clean up previous window if still running
     #  TODO: this is a hack to use global variable but doesn't interfere with other mods
@@ -38,7 +45,7 @@ def showWindow(visible=True, reset=False):
     except NameError:
         _galaxyObject = None
         
-        
+    crlf = '\r\n'
     #TODO: dangerous with other mods.  blasts everything to dust
     #unity_util.clean_behaviors()
 
@@ -62,7 +69,6 @@ def showWindow(visible=True, reset=False):
             sysSettings = getSystemSettings(modulename)
             self.sysSettings = sysSettings
             
-            self.buffer = System.Text.StringBuilder(4096)
             self.starcache = []
             self.valuecache = []
             self.ores = []
@@ -83,7 +89,6 @@ def showWindow(visible=True, reset=False):
                         print(error)
                     GUILayout.Label(error)
                         
-                self.timerPass = False
                 GUI.DragWindow(self.drawPanelRect)
 
             def TooltipGUI(windowid):
@@ -143,10 +148,6 @@ def showWindow(visible=True, reset=False):
             select = UnityEngine.Object.FindObjectOfType[UIGalaxySelect]()
             return GameMain.galaxy if select == None else select.starmap.galaxyData
         
-        def WriteKMG(self, value):
-            self.buffer.Append(' ', 7)
-            StringBuilderUtility.WriteKMG(self.buffer, 6, value, True)
-            return self.buffer.ToString()
             #return str(value)
             
         def MainPanel(self):
@@ -165,65 +166,53 @@ def showWindow(visible=True, reset=False):
                     cache.starloaded = -1
                     cache.values = ['']*len(self.ores)
                     cache.tooltip = star.name 
-                    cache.name = "%s (?)"%star.name
+                    cache.name = "%s (%s)"%(star.name, star.planetCount)
                     cache.planets = [ ]
                     cache.color = Color.grey
+
+                # queue work manually.  loading in game can cause errors
+                cache.loadedplanets = set()
+                planets = []
+                for cache in self.starcache:
+                    star = cache.star
+                    for planet in star.planets:
+                        pcache = Expando()
+                        pcache.planet = planet
+                        pcache.loaded = 0
+                        cache.planets.append(pcache)
+                        planets.append(pcache)
+                ProcessPlanets(planets)
+                    
+            #PlanetModelingManager.modPlanetReqList.Clear()
+            #PlanetModelingManager.fctPlanetReqList.Clear()
+                    
             for i, cache in enumerate(self.starcache):
-                starloaded = cache.star.loaded
-                if starloaded and cache.starloaded <= 0:
-                    cache.values = [self.WriteKMG(cache.star.GetResourceAmount(i+1)) for i, vein in enumerate(self.ores)]
+                if cache.starloaded < 0: # check planets
+                    loaded = sum( ( planet.loaded for planet in cache.planets ) )
+                    if loaded == len(cache.star.planets):
+                        cache.starloaded = 0
+                    #cache.star.Load()
+                if cache.starloaded == 0:
+                    cache.values = [WriteKMG(cache.star.GetResourceAmount(i+1)) for i, vein in enumerate(self.ores)]
                     cache.starloaded = 1
                     cache.showtoggle = True
                     cache.color = Color.white
                     tooltip = cache.star.name
                     cache.name = "%s (%s)"%(cache.star.name, str(cache.star.planetCount) )
-                    cache.planets = [ Expando() for x in range(cache.star.planetCount) ]
-                    for j, pcache in enumerate(cache.planets):
-                        planet = cache.star.planets[j]
-                        pcache.showtoggle = False
-                        pcache.name = planet.displayName
-                        pcache.tooltip = planet.displayName
-                        pcache.color = Color.grey
+                    for pcache in cache.planets:
+                        planet = pcache.planet
                         if planet.orbitAroundPlanet != None:
-                            pcache.tooltip += " (Moon of %s)"%(planet.orbitAroundPlanet.displayName)
-                            pcache.name += ' (Moon)'
-                            
-                        tooltip += '\r\n ' + pcache.tooltip
-                        if planet.type != EPlanetType.Gas:
-                            pcache.values = [ self.WriteKMG(planet.veinAmounts[i+1]) for i, vein in enumerate(self.ores) ]
-                        else:
-                            pcache.values = ['']*len(self.ores)
-                            
-                        pcache.tooltip += '\r\nType: \t\t' + planet.typeString
-                        pcache.tooltip += '\r\nOrbit Radius: \t%.2f AU'%planet.orbitRadius
-                        pcache.tooltip += '\r\nOrbit Period: \t%.2f'%planet.orbitalPeriod
-                        pcache.tooltip += '\r\nOrbit Rotate: \t%.2f'%planet.rotationPeriod
-                        pcache.tooltip += '\r\nOrbit Incline: \t%.2f'%planet.orbitInclination                        
+                            tooltip += crlf + planet.displayName + ' ' +" (Moon of %s)"%(planet.orbitAroundPlanet.displayName)
                         
-                        water = LDB.items.Select(planet.waterItemId)
-                        if water != None: 
-                            pcache.tooltip += '\r\nOceans: \t\t' + water.name
-                        pcache.tooltip += '\r\nLand: \t\t%.1f %%'%(planet.landPercent*100.0)
-                        pcache.tooltip += '\r\nWind: \t\t%.0f'%(planet.windStrength*100.0)
-                        pcache.tooltip += '\r\nLuminosity:\t%.0f'%(planet.luminosity*100.0)
-                        if planet.gasItems:
-                            for k, gas in enumerate(planet.gasItems):
-                                proto = LDB.items.Select(gas)
-                                pcache.tooltip += '\r\n%-10s\t%.2f'%(proto.name+':', planet.gasSpeeds[k])
-                        
-                    tooltip += '\r\n'
-                    tooltip += '\r\nLuminosity:\t%.0f L'%(cache.star.luminosity*100.0)
-                    tooltip += '\r\nMass:\t\t%.3f M'%(cache.star.mass)
-                    tooltip += '\r\nTemperature:\t%.0f K'%(cache.star.temperature)
-                    tooltip += '\r\nSpectral Class:\t%s'%(cache.star.spectr)
-                    tooltip += '\r\nRadius:\t\t%.2f R'%(cache.star.radius)
+                    tooltip += crlf 
+                    tooltip += crlf + 'Luminosity:\t%.0f L'%(cache.star.luminosity*100.0)
+                    tooltip += crlf + 'Mass:\t\t%.3f M'%(cache.star.mass)
+                    tooltip += crlf + 'Temperature:\t%.0f K'%(cache.star.temperature)
+                    tooltip += crlf + 'Spectral Class:\t%s'%(cache.star.spectr)
+                    tooltip += crlf + 'Radius:\t\t%.2f R'%(cache.star.radius)
                         
                     cache.tooltip = tooltip
                     
-                if not starloaded and cache.starloaded < 0:
-                    cache.starloaded = 0
-                    cache.star.Load()
-                    break
 
             with VerticalScope("Galaxy Seed: %d"%(galaxyData.seed), self.gui.tinyskin.window):
                 with GUILayout.HorizontalScope():
@@ -240,7 +229,17 @@ def showWindow(visible=True, reset=False):
                     options = System.Array[GUILayoutOption]([GUILayout.MaxWidth(itemwidth)])
                     
                     with HorizontalScope():
-                        GUILayout.Label('Stars')
+                        with VerticalScope():
+                            #select = UnityEngine.Object.FindObjectOfType[UIGalaxySelect]()
+                            #if select != None:
+                            #    tooltip = 'Using Random or Changing Seed while loading will cause an error.'
+                            #    tooltip += crlf + 'You will need to restart the game to clear.'
+                            #    tooltip += crlf + 'You will need to restart the game to clear.'
+                            #    with ColorScope(Color.yellow):
+                            #        GUILayout.Box(GUIContent('Changing Seed while loading planets may cause error', tooltip))
+                            #        
+                            GUILayout.FlexibleSpace()
+                            GUILayout.Label('Stars')
                         GUILayout.FlexibleSpace()
                         for proto in self.ores: 
                             tooltip = proto.name + "\r\n\r\n" + proto.description
@@ -289,18 +288,103 @@ def showWindow(visible=True, reset=False):
             # self.useGUILayout = True
             pass
 
+        # call to consume mouse events from passing through after windows are processed
+        def PreventMouseInputs(self, rect):
+            if rect.Contains(Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)):
+                if Input.GetMouseButton(0) or Input.GetMouseButtonDown(0) or Input.mouseScrollDelta.y != 0:
+                    Input.ResetInputAxes()
+        
         def OnGUI(self):
             try:
                 self.windowRect = GUI.Window(0xdeaf, self.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 self.tooltipRect = GUI.Window(0xdeaf+1, self.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
+                self.PreventMouseInputs(self.windowRect)
+                self.PreventMouseInputs(self.tooltipRect)
             except Exception, e:
                 self.PrintError(e)
-
+                
+                
     _galaxyObject = unity_util.create_gui_behavior(Controller)
     return _galaxyObject
 
-def onSceneChange():
+def ProcessPlanets(planets):
+    import PlanetRawData, PlanetModelingManager, PlanetAuxData, EPlanetType, LDB
+    import UnityEngine
+    import os, sys, math
+    from UnityEngine import GUI, GUILayout, GUIStyle, GUIUtility, Screen, Rect, Vector2, Vector3, Input, KeyCode, GUISkin, Font, Color
+    from UnityEngine import Event, EventType, WaitForSeconds, GameObject, GUILayoutOption, GUIContent
+    ores = [LDB.items.Select(x.MiningItem) for x in LDB.veins]
+    crlf = '\r\n'
+    
+    def UpdatePlanet(pcache):
+        try:
+            planet = pcache.planet
+            if (planet.data == None):
+                # Begin copy algorithm from PlanetComputeThreadMain
+                algorithm = PlanetModelingManager.Algorithm(planet)
+                planet.data = PlanetRawData(planet.precision)
+                planet.modData = planet.data.InitModData(planet.modData)
+                planet.data.CalcVerts()
+                planet.aux = PlanetAuxData(planet)
+                algorithm.GenerateTerrain(planet.mod_x, planet.mod_y)
+                algorithm.CalcWaterPercent()        
+                if planet.factory == None:
+                    if (planet.type != EPlanetType.Gas):
+                        algorithm.GenerateVegetables
+                    if (planet.type != EPlanetType.Gas):
+                        algorithm.GenerateVeins(False)
+                # End copy algorithm from PlanetComputeThreadMain
+
+            # Build cache
+            pcache.showtoggle = False
+            pcache.name = planet.displayName
+            pcache.tooltip = planet.displayName
+            pcache.color = Color.grey
+            if planet.orbitAroundPlanet != None:
+                pcache.tooltip += " (Moon of %s)"%(planet.orbitAroundPlanet.displayName)
+                pcache.name += ' (Moon)'
+            if planet.type != EPlanetType.Gas:
+                pcache.values = [ WriteKMG(planet.veinAmounts[i+1]) for i, vein in enumerate(ores) ]
+            else:
+                pcache.values = ['']*len(ores)
+                
+            pcache.tooltip += crlf + 'Type: \t\t' + planet.typeString
+            pcache.tooltip += crlf + 'Orbit Radius: \t%.2f AU'%planet.orbitRadius
+            pcache.tooltip += crlf + 'Orbit Period: \t%.2f'%planet.orbitalPeriod
+            pcache.tooltip += crlf + 'Orbit Rotate: \t%.2f'%planet.rotationPeriod
+            pcache.tooltip += crlf + 'Orbit Incline: \t%.2f'%planet.orbitInclination                        
+            
+            water = LDB.items.Select(planet.waterItemId)
+            if water != None: 
+                pcache.tooltip += crlf + 'Oceans: \t\t' + water.name
+            pcache.tooltip += crlf + 'Land: \t\t%.1f %%'%(planet.landPercent*100.0)
+            pcache.tooltip += crlf + 'Wind: \t\t%.0f'%(planet.windStrength*100.0)
+            pcache.tooltip += crlf + 'Luminosity:\t%.0f'%(planet.luminosity*100.0)
+            if planet.gasItems:
+                for k, gas in enumerate(planet.gasItems):
+                    proto = LDB.items.Select(gas)
+                    pcache.tooltip += crlf + '%-10s\t%.2f'%(proto.name+':', planet.gasSpeeds[k])
+        except Exception as ex:
+            print(str(ex))
+        
+        #print("Loaded '%s'"%planet.name)
+        pcache.loaded = 1
+    
+    import System
+    for planet in planets:
+        System.Threading.ThreadPool.QueueUserWorkItem( System.Threading.WaitCallback(UpdatePlanet), planet )
+            
+        #import coroutine
+        #coroutine.start_new_coroutine(ProcessPlanetsThread, (planets,), {})
+        
+        
+def Reload():
     import shortcuts, gui, screens, galaxy
     reload(shortcuts); reload(gui); reload(screens); reload(galaxy); 
-    galaxy.showWindow(reset=False)
+    global _galaxyObject
+    try:
+        if _galaxyObject != None:
+            galaxy.showWindow(reset=False)
+    except:
+        pass
 

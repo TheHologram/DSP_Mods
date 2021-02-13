@@ -19,7 +19,7 @@ def InitScreenMap():
         'UIReplicatorWindow': ReplicatorInspect(),
         'UIBeltWindow': BeltInspect()
     }
-    print("Screens reloaded")
+    #print("Screens reloaded")
 
 def LoadScreenMap():
     global _screens
@@ -114,8 +114,13 @@ class GlobalInspect(BaseScreenEditor):
                 GameMain.mainPlayer.mecha.lab.gameHistory.AddTechHash(100000)
                 
         if Toggle(state, 'show_galaxy', "Show Galaxy"):
-            if ShowButtonWithLabel("Activate Screen", "Show"):
-                import galaxy; galaxy.showWindow()
+            with HorizontalScope():
+                GUILayout.Label("Galaxy Screen")
+                GUILayout.FlexibleSpace()
+                if GUILayout.Button(GUIContent('Show', 'Show all resources. Can use a lot of memory and CPU when switching.')):
+                    import galaxy; galaxy.showWindow()
+                if GUILayout.Button(GUIContent('Reload', 'Reloads Python Files from disk')):
+                    import galaxy; galaxy.Reload()
                 
         with VerticalScope("", guistate.tinyskin.window):
             with HorizontalScope():
@@ -123,21 +128,7 @@ class GlobalInspect(BaseScreenEditor):
                 state.show_items = GUILayout.Toggle(state.show_items, "Show")
             if state.show_items:
                 ShowItems(owner, state)
-                
-                
-class GalaxyInspect(BaseScreenEditor):
-    def __init__(self, *args, **kwargs):
-        BaseScreenEditor.__init__(self, *args, **kwargs)
-
-    def Show(self, owner, _):
-        guistate = owner.state.gui
-        #state = owner.state.screen_states["Replicator"]
-        if ShowButtonWithLabel("Build All", "Go"):
-            pass
-        
-        #for i,x in enumerate(LDB.veins): 
-        #    print x.ID, x.name, LDB.items.Select(x.MiningItem).name,   GameMain.localStar.GetResourceAmount(i)
-            
+                           
 
 # Add optional things to Replicator (autocomplete?)
 class ReplicatorInspect(BaseScreenEditor):
