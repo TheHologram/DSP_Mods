@@ -21,19 +21,23 @@ from gui import *
 from shortcuts import ShortcutManager, ShortcutHandler
 
 class GlobalState(object):
-    def __init__(self, visible):
+    def __init__(self, visible, globalReset=True):
         from UnityEngine import Screen, Rect, Vector2
         import collections
-        self.gui = getGlobalGUIState(True)
+        self.gui = getGlobalGUIState(globalReset)
         self.enabled = False
         self.visible = visible
         self.timerRunning = False
         self.width = 500
         self.height = Screen.height
         self.windowRect = Rect(Screen.width - self.width, 100, self.width, self.height)
-        self.tooltipRect = Rect(Screen.width - self.width, Screen.height-500, self.width, 400)
+        self.tooltipRectDefault = Rect(Screen.width - self.width, Screen.height-300, self.width, 300)
+        self.tooltipRect = self.tooltipRectDefault
+        self.mouseInWindow = False
         self.drawPanelRect = Rect(0, 0, 150, 50)
+        self.lastRect = self.drawPanelRect
         self.minimize = False
+        self.screen = Rect(0,0,Screen.width, Screen.height)
 
         self.timerPass = True
         self.screen_states = collections.defaultdict(Expando) # shared screen type states
@@ -44,11 +48,11 @@ class GlobalState(object):
        
         pass
 
-def getGlobalState(visible=True, reset=False):
+def getGlobalState(visible=True, reset=False, globalReset=False):
     global _cheatglobalstate
     try:
         if reset:
-            _cheatglobalstate = GlobalState(visible)
+            _cheatglobalstate = GlobalState(visible, globalReset=globalReset)
         _cheatglobalstate
         if visible:
             _cheatglobalstate.visible=True
@@ -88,8 +92,8 @@ def showWindow(visible=True, reset=False):
     import unity_util
     import UnityEngine
     import os, sys, math
-    from UnityEngine import GUI, GUILayout, GUIStyle, GUIUtility, Screen, Rect, Vector2, Vector3, Input, KeyCode, GUISkin, Font
-    from UnityEngine import Event, EventType, WaitForSeconds, GameObject, GUILayoutOption, GUIContent
+    from UnityEngine import GUI, GUILayout, GUIStyle, GUIUtility, Screen, Rect, Vector2, Vector3, Input, KeyCode, GUISkin, Font, Color
+    from UnityEngine import Event, EventType, WaitForSeconds, GameObject, GUILayoutOption, GUIContent, GUILayoutUtility
     from System.Reflection import BindingFlags
     import System
     
@@ -130,14 +134,29 @@ def showWindow(visible=True, reset=False):
                     self.StartPanelTimer()
                     if not state.visible:
                         return
+                        
+                    if Screen.height != state.screen.height or Screen.width != state.screen.width:
+                        state = getGlobalState(visible=state.visible, reset=True, globalReset=False)
+                        self.state = state
 
                     if state.minimize:
                         with GUILayout.HorizontalScope():
                             GUILayout.Label('Cheats')
                             if GUILayout.Button("Restore"):
                                 state.minimize = False
+                    elif Screen.width < 1000 or Screen.height < 600:
+                        with GUILayout.HorizontalScope():
+                            GUILayout.Label('Cheats')
+                            if GUILayout.Button(GUIContent('Reload', 'Reloads Python Files from disk')):
+                                Reload()
+                            if GUILayout.Button("X"):
+                                if self.gameObject:
+                                    UnityEngine.Object.DestroyObject(self.gameObject)
+                        with ColorScope(Color.yellow):
+                            GUILayout.Label('Screen too small to display properly. Recommend 1920x1080 or higher')
                     else:
                         self.MainPanel()
+                    state.lastRect = GUILayoutUtility.GetLastRect()
 
                     if Event.current.type == EventType.Repaint:
                         self.lasttooltip = str(GUI.tooltip) if GUI.tooltip else None
@@ -148,9 +167,28 @@ def showWindow(visible=True, reset=False):
                         self.lasterror = error
                         print(error)
                     GUILayout.Label(error)
-                        
+                
+                bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
+                if bottom > state.tooltipRectDefault.y:
+                    height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
+                    state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
+                    
+                # TODO: Debug tooltip window and main window extent
+                
+                #pos = Vector2(Input.mousePosition.x, Screen.height-Input.mousePosition.y)
+                #GUILayout.Label(str("(%s,%s)"%(pos.x, pos.y)))
+                #GUILayout.Label(str(windowRect))
+                #GUILayout.Label(str(state.tooltipRect))
+                #if state.mouseInWindow:
+                #    GUILayout.Label('Mouse in Window')
+                #if state.tooltipRect.Contains(pos):
+                #    GUILayout.Label('Mouse in Tooltip')
+                
                 state.timerPass = False
                 GUI.DragWindow(state.drawPanelRect)
+                
 
             def TooltipGUI(windowid):
                 try:
@@ -159,7 +197,7 @@ def showWindow(visible=True, reset=False):
                         ShowTooltipWindow(self.lasttooltip, state.tooltipRect)
                 except Exception, e:
                     GUILayout.Label(str(e))
-                GUI.DragWindow(state.tooltipRect)
+                #GUI.DragWindow(state.tooltipRect)
 
             def InitFuncPanelGUI(windowid):
                 """Initialize State: This is called only once"""
@@ -292,18 +330,23 @@ def showWindow(visible=True, reset=False):
             if rect.Contains(Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)):
                 if Input.GetMouseButton(0) or Input.GetMouseButtonDown(0) or Input.mouseScrollDelta.y != 0:
                     Input.ResetInputAxes()
+                return True
+            return False
                     
         def OnGUI(self):
             try:
                 state = self.state
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
-                state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
                 if state.enabled and state.visible:
                     # limit amount of mouse override
-                    mouseRect = UnityEngine.Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, min(state.windowRect.height, 400))
-                    self.PreventMouseInputs(mouseRect)
-                    if self.lasttooltip:
-                        self.PreventMouseInputs(state.tooltipRect)
+                    bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                    windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                                        
+                    state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
+                    state.mouseInWindow = self.PreventMouseInputs(windowRect)
+                    #TODO: just disable this there is no value
+                    #if self.lasttooltip:
+                    #    self.PreventMouseInputs(state.tooltipRect)
             except Exception, e:
                 self.PrintError(e)
 

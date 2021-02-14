@@ -56,11 +56,14 @@ def showWindow(visible=True, reset=False):
             self.component = None  # will be assigned if exists as member
             
             self.gui = getGlobalGUIState(True)
-            self.width = Screen.width - 450
-            self.height = Screen.height - 400 - 200
+            self.width = Screen.width * 4 / 5
+            if self.width < (69*16): # 14 icons + text
+                self.width = Screen.width
+                
+            self.height = Screen.height * 4 / 5
             
-            self.windowRect = Rect(50, 400, self.width, self.height)
-            self.tooltipRect = Rect(Screen.width - 400, Screen.height-500, 400, 400)
+            self.windowRect = Rect(min(50,(Screen.width-self.width)/2), min(50,(Screen.height-self.height)/2) , self.width, self.height)
+            self.tooltipRect = Rect(Screen.width - 400, Screen.height-300, 400, 300)
             self.drawPanelRect = Rect(0, 0, self.width, 50)
             
             self.lasterror = None
@@ -157,7 +160,9 @@ def showWindow(visible=True, reset=False):
                 self.selectedstar = -1
                 self.ores = [LDB.items.Select(x.MiningItem) for x in LDB.veins]
                 self.starcache = [ Expando() for x in range(galaxyData.starCount) ]
-                self.itemlist = self.starcache
+                self.itemlist = [None] # placeholder for header
+                self.itemlist.extend(self.starcache)
+                
                 for i, cache in enumerate(self.starcache):
                     star = galaxyData.stars[i]
                     cache.showtoggle = False
@@ -225,27 +230,48 @@ def showWindow(visible=True, reset=False):
                 
                 with GUISkinScope(self.gui.smallskin):
                     labeloptions = System.Array[GUILayoutOption]([GUILayout.MaxWidth(300)])
-                    itemwidth = (self.width - 400 - 50) / LDB.veins.Length
-                    options = System.Array[GUILayoutOption]([GUILayout.MaxWidth(itemwidth)])
+                    itemwidth = (self.width) / (LDB.veins.Length + 3) # 3 lengths for star nams
+                    iconwidth = round(self.ores[0].iconSprite.textureRect.width,0) + 1
+                    itemwidth = int( max(iconwidth, itemwidth) )
+                    #options = System.Array[GUILayoutOption]([GUILayout.MinWidth(itemwidth), GUILayout.MaxWidth(itemwidth)])
+                    options = System.Array[GUILayoutOption]([GUILayout.Width(itemwidth)])
                     
-                    with HorizontalScope():
-                        with VerticalScope():
-                            #select = UnityEngine.Object.FindObjectOfType[UIGalaxySelect]()
-                            #if select != None:
-                            #    tooltip = 'Using Random or Changing Seed while loading will cause an error.'
-                            #    tooltip += crlf + 'You will need to restart the game to clear.'
-                            #    tooltip += crlf + 'You will need to restart the game to clear.'
-                            #    with ColorScope(Color.yellow):
-                            #        GUILayout.Box(GUIContent('Changing Seed while loading planets may cause error', tooltip))
-                            #        
+                    if False:  # TODO inline header
+                        with HorizontalScope():
+                            with VerticalScope():
+                                #select = UnityEngine.Object.FindObjectOfType[UIGalaxySelect]()
+                                #if select != None:
+                                #    tooltip = 'Using Random or Changing Seed while loading will cause an error.'
+                                #    tooltip += crlf + 'You will need to restart the game to clear.'
+                                #    tooltip += crlf + 'You will need to restart the game to clear.'
+                                #    with ColorScope(Color.yellow):
+                                #        GUILayout.Box(GUIContent('Changing Seed while loading planets may cause error', tooltip))
+                                #        
+                                GUILayout.Label(str(itemwidth))
+                                #GUILayout.Label(str(self.ores[0].iconSprite.textureRect))
+                                
+                                GUILayout.FlexibleSpace()
+                                GUILayout.Label('Stars')
                             GUILayout.FlexibleSpace()
-                            GUILayout.Label('Stars')
-                        GUILayout.FlexibleSpace()
-                        for proto in self.ores: 
-                            tooltip = proto.name + "\r\n\r\n" + proto.description
-                            GUILayout.Label(GUIContent(proto.iconSprite.texture, tooltip), options)
+                            for proto in self.ores: 
+                                tooltip = proto.name + "\r\n\r\n" + proto.description
+                                GUILayout.Label(GUIContent(proto.iconSprite.texture, tooltip), options)
+                                
+                            if itemwidth > iconwidth:
+                                GUILayout.Space((itemwidth-iconwidth)/3)
                                 
                     def render(cache):
+                        if cache == None:
+                            with HorizontalScope():
+                                with VerticalScope():
+                                    GUILayout.Label('')
+                                    GUILayout.FlexibleSpace()
+                                    GUILayout.Label('Stars')
+                                GUILayout.FlexibleSpace()
+                                for proto in self.ores: 
+                                    tooltip = proto.name + "\r\n\r\n" + proto.description
+                                    GUILayout.Label(GUIContent(proto.iconSprite.texture, tooltip), options)
+                            return
                         name = cache.name
                         tooltip = cache.tooltip
                         color = cache.color
@@ -256,6 +282,7 @@ def showWindow(visible=True, reset=False):
                                     Toggle(cache,'toggled', GUIContent(name, tooltip))
                                     if prev != cache.toggled:
                                         itemlist = []
+                                        itemlist.append(None)
                                         for x in self.starcache:
                                             itemlist.append(x)
                                             if x.toggled: itemlist.extend(x.planets)
@@ -297,9 +324,11 @@ def showWindow(visible=True, reset=False):
         def OnGUI(self):
             try:
                 self.windowRect = GUI.Window(0xdeaf, self.windowRect, self.windowCallback, '', GUI.skin.scrollView)
+                
                 self.tooltipRect = GUI.Window(0xdeaf+1, self.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
                 self.PreventMouseInputs(self.windowRect)
-                self.PreventMouseInputs(self.tooltipRect)
+                #TODO: just disable this there is no value
+                #self.PreventMouseInputs(self.tooltipRect)
             except Exception, e:
                 self.PrintError(e)
                 
@@ -308,7 +337,7 @@ def showWindow(visible=True, reset=False):
     return _galaxyObject
 
 def ProcessPlanets(planets):
-    import PlanetRawData, PlanetModelingManager, PlanetAuxData, EPlanetType, LDB
+    import PlanetRawData, PlanetModelingManager, PlanetAuxData, EPlanetType, LDB, EPlanetSingularity
     import UnityEngine
     import os, sys, math
     from UnityEngine import GUI, GUILayout, GUIStyle, GUIUtility, Screen, Rect, Vector2, Vector3, Input, KeyCode, GUISkin, Font, Color
@@ -351,9 +380,11 @@ def ProcessPlanets(planets):
             pcache.tooltip += crlf + 'Type: \t\t' + planet.typeString
             pcache.tooltip += crlf + 'Orbit Radius: \t%.2f AU'%planet.orbitRadius
             pcache.tooltip += crlf + 'Orbit Period: \t%.2f'%planet.orbitalPeriod
-            pcache.tooltip += crlf + 'Orbit Rotate: \t%.2f'%planet.rotationPeriod
-            pcache.tooltip += crlf + 'Orbit Incline: \t%.2f'%planet.orbitInclination                        
-            
+            pcache.tooltip += crlf + 'Rotational Period: \t%.2f'%planet.rotationPeriod
+            pcache.tooltip += crlf + 'Orbit Incline: \t%.2f'%planet.orbitInclination
+            if planet.singularity != EPlanetSingularity.None:
+                pcache.tooltip += crlf + 'Singularity: \t%s'%planet.singularity
+                            
             water = LDB.items.Select(planet.waterItemId)
             if water != None: 
                 pcache.tooltip += crlf + 'Oceans: \t\t' + water.name
