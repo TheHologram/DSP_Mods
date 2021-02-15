@@ -160,15 +160,28 @@ def showWindow(visible=True, reset=False):
                     else:
                         self.MainPanel()
                         
-                    if Event.current.type == EventType.Layout:
+                    if Event.current.type == EventType.Repaint:
                         state.lastRect = GUILayoutUtility.GetLastRect()
-                        
-                        bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                        windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
-                        #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
-                        if bottom > state.tooltipRectDefault.y:
-                            height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
-                            state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
+                    
+                    bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                    windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                    state.windowRectCurrent = windowRect
+                    #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
+                    if bottom > state.tooltipRectDefault.y:
+                        height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
+                        state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
+
+                    # TODO: Debug tooltip window and main window extent
+                    #GUILayout.Label(str(state.mousePosition))
+                    #GUILayout.Label(str(windowRect))
+                    #GUILayout.Label(str(state.windowRectCurrent))
+                    #GUILayout.Label(str(state.lastRectPaint))
+                    
+                    #GUILayout.Label(str(state.tooltipRect))
+                    #if state.mouseInWindow:
+                    #    GUILayout.Label('Mouse in Window')
+                    #if state.tooltipRect.Contains(pos):
+                    #    GUILayout.Label('Mouse in Tooltip')
 
                     # TODO: accessing tooltip here seems to trigger the Control positioning bug
                     #if Event.current.type == EventType.Repaint:
@@ -181,17 +194,6 @@ def showWindow(visible=True, reset=False):
                         self.lasterror = error
                         print(error)
                     GUILayout.Label(error)
-                    
-                # TODO: Debug tooltip window and main window extent
-                
-                #pos = Vector2(Input.mousePosition.x, Screen.height-Input.mousePosition.y)
-                #GUILayout.Label(str("(%s,%s)"%(pos.x, pos.y)))
-                #GUILayout.Label(str(windowRect))
-                #GUILayout.Label(str(state.tooltipRect))
-                #if state.mouseInWindow:
-                #    GUILayout.Label('Mouse in Window')
-                #if state.tooltipRect.Contains(pos):
-                #    GUILayout.Label('Mouse in Tooltip')
                 
                 state.timerPass = False
                 GUI.DragWindow(state.drawPanelRect)
@@ -335,8 +337,8 @@ def showWindow(visible=True, reset=False):
         # call to consume mouse events from passing through after windows are processed
         def PreventMouseInputs(self, rect):
             state = self.state # dont check mouse state while in OnGUI check in Update
-            state.mousePosition = Input.mousePosition
-            if rect.Contains(Vector2(state.mousePosition.x, Screen.height - Input.mousePosition.y)):
+            state.mousePosition = Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)
+            if rect.Contains(state.mousePosition):
                 if Input.GetMouseButton(0) or Input.GetMouseButtonDown(0) or Input.mouseScrollDelta.y != 0:
                     Input.ResetInputAxes()
                 return True
@@ -351,14 +353,14 @@ def showWindow(visible=True, reset=False):
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 if state.enabled and state.visible:
                     # limit amount of mouse override
-                    bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                    state.windowRectCurrent=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                    #bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                    #state.windowRectCurrent=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
                     
                     #bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
                     #windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
                                         
-                    state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
-                    #state.mouseInWindow = self.PreventMouseInputs(windowRect)
+                    #state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
+                    state.mouseInWindow = self.PreventMouseInputs(state.windowRectCurrent)
                     
                     #TODO: just disable this there is no value
                     #if self.lasttooltip:
@@ -370,8 +372,7 @@ def showWindow(visible=True, reset=False):
             # Update is called less so better place to check keystate
             try:
                 state = self.state
-                state.mousePosition = Input.mousePosition
-                state.mouseInWindow = self.PreventMouseInputs(state.windowRectCurrent)
+                state.mousePosition = Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)
                 
                 ShortcutManager.evaluate(self)
             except Exception, e:
