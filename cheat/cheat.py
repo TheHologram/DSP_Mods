@@ -125,6 +125,7 @@ def showWindow(visible=True, reset=False):
             self.hidestring = 'Hide ('+self.keycodes['hide'][0]+')'
             self.lasterror = None
             self.lasttooltip = None
+            self.lasttooltipRepaint = None # holds from repaint to next layout 
             sysSettings = getSystemSettings(modulename)
             self.sysSettings = sysSettings
             self.RefreshPanel()
@@ -159,6 +160,13 @@ def showWindow(visible=True, reset=False):
                             GUILayout.Label('Screen too small to display properly. Recommend 1920x1080 or higher')
                     else:
                         self.MainPanel()
+
+                    # TODO: accessing tooltip here seems to trigger the Control positioning bug
+                    #   make copy of the string during repaint for next layout
+                    if Event.current.type == EventType.Repaint:
+                        self.lasttooltipRepaint = System.String(GUI.tooltip) if GUI.tooltip else None
+                    if Event.current.type == EventType.Layout:
+                        self.lasttooltip = self.lasttooltipRepaint
                         
                     if Event.current.type == EventType.Repaint:
                         state.lastRect = GUILayoutUtility.GetLastRect()
@@ -166,26 +174,12 @@ def showWindow(visible=True, reset=False):
                     bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
                     windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
                     state.windowRectCurrent = windowRect
-                    #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
                     if bottom > state.tooltipRectDefault.y:
                         height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
                         state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
 
-                    # TODO: Debug tooltip window and main window extent
-                    #GUILayout.Label(str(state.mousePosition))
-                    #GUILayout.Label(str(windowRect))
-                    #GUILayout.Label(str(state.windowRectCurrent))
-                    #GUILayout.Label(str(state.lastRectPaint))
-                    
-                    #GUILayout.Label(str(state.tooltipRect))
-                    #if state.mouseInWindow:
-                    #    GUILayout.Label('Mouse in Window')
-                    #if state.tooltipRect.Contains(pos):
-                    #    GUILayout.Label('Mouse in Tooltip')
-
-                    # TODO: accessing tooltip here seems to trigger the Control positioning bug
-                    #if Event.current.type == EventType.Repaint:
-                    #    self.lasttooltip = str(GUI.tooltip) if GUI.tooltip else None
+                    if self.lasttooltip:
+                        ShowTooltipWindow(self.lasttooltip, state.tooltipRect)
                         
                     self.lasterror = None
                 except Exception, e:
@@ -348,20 +342,14 @@ def showWindow(visible=True, reset=False):
             try:
                 if Event.current.type not in (EventType.Layout, EventType.MouseDrag, EventType.Repaint, EventType.MouseDown, ):
                     return
-            
                 state = self.state
+
+                #if state.enabled and state.visible:
+                    #state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
+            
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 if state.enabled and state.visible:
-                    # limit amount of mouse override
-                    #bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                    #state.windowRectCurrent=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
-                    
-                    #bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                    #windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
-                                        
-                    #state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
                     state.mouseInWindow = self.PreventMouseInputs(state.windowRectCurrent)
-                    
                     #TODO: just disable this there is no value
                     #if self.lasttooltip:
                     #    self.PreventMouseInputs(state.tooltipRect)
