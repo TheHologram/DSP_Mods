@@ -30,7 +30,8 @@ class GlobalState(object):
         self.timerRunning = False
         self.width = 500
         self.height = Screen.height
-        self.windowRect = Rect(Screen.width - self.width, 100, self.width, self.height)
+        self.windowRect = Rect(Screen.width - self.width, 100, self.width, self.height) # full size
+        self.windowRectCurrent = self.windowRect # actual size
         self.tooltipRectDefault = Rect(Screen.width - self.width, Screen.height-300, self.width, 300)
         self.tooltipRect = self.tooltipRectDefault
         self.mouseInWindow = False
@@ -128,12 +129,14 @@ def showWindow(visible=True, reset=False):
             self.sysSettings = sysSettings
             self.RefreshPanel()
 
+            # OnGUI is called several times.  Do Layout changes
             def FuncPanelGUI(windowid):
                 state = self.state
                 try:
                     self.StartPanelTimer()
                     if not state.visible:
                         return
+                        
                         
                     if Screen.height != state.screen.height or Screen.width != state.screen.width:
                         state = getGlobalState(visible=state.visible, reset=True, globalReset=False)
@@ -156,10 +159,21 @@ def showWindow(visible=True, reset=False):
                             GUILayout.Label('Screen too small to display properly. Recommend 1920x1080 or higher')
                     else:
                         self.MainPanel()
-                    state.lastRect = GUILayoutUtility.GetLastRect()
+                        
+                    if Event.current.type == EventType.Layout:
+                        state.lastRect = GUILayoutUtility.GetLastRect()
+                        
+                        bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                        windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                        #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
+                        if bottom > state.tooltipRectDefault.y:
+                            height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
+                            state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
 
-                    if Event.current.type == EventType.Repaint:
-                        self.lasttooltip = str(GUI.tooltip) if GUI.tooltip else None
+                    # TODO: accessing tooltip here seems to trigger the Control positioning bug
+                    #if Event.current.type == EventType.Repaint:
+                    #    self.lasttooltip = str(GUI.tooltip) if GUI.tooltip else None
+                        
                     self.lasterror = None
                 except Exception, e:
                     error = "Error: " + str(e)
@@ -167,13 +181,6 @@ def showWindow(visible=True, reset=False):
                         self.lasterror = error
                         print(error)
                     GUILayout.Label(error)
-                
-                bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
-                #tooltipRect = Rect(state.tooltipRect.x, max(state.tooltipRect.y,bottom), state.tooltipRect.width, state.tooltipRect.height)
-                if bottom > state.tooltipRectDefault.y:
-                    height = min(Screen.height, (bottom + state.tooltipRectDefault.height)) - bottom
-                    state.tooltipRect = Rect(state.tooltipRect.x, bottom, state.tooltipRect.width, height)
                     
                 # TODO: Debug tooltip window and main window extent
                 
@@ -327,7 +334,9 @@ def showWindow(visible=True, reset=False):
 
         # call to consume mouse events from passing through after windows are processed
         def PreventMouseInputs(self, rect):
-            if rect.Contains(Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y)):
+            state = self.state # dont check mouse state while in OnGUI check in Update
+            state.mousePosition = Input.mousePosition
+            if rect.Contains(Vector2(state.mousePosition.x, Screen.height - Input.mousePosition.y)):
                 if Input.GetMouseButton(0) or Input.GetMouseButtonDown(0) or Input.mouseScrollDelta.y != 0:
                     Input.ResetInputAxes()
                 return True
@@ -335,15 +344,22 @@ def showWindow(visible=True, reset=False):
                     
         def OnGUI(self):
             try:
+                if Event.current.type not in (EventType.Layout, EventType.MouseDrag, EventType.Repaint, EventType.MouseDown, ):
+                    return
+            
                 state = self.state
                 state.windowRect = GUI.Window(0xfade, state.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 if state.enabled and state.visible:
                     # limit amount of mouse override
                     bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
-                    windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                    state.windowRectCurrent=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
+                    
+                    #bottom = state.windowRect.y + state.lastRect.height + state.drawPanelRect.height
+                    #windowRect=Rect(state.windowRect.x, state.windowRect.y, state.windowRect.width, state.lastRect.height + state.drawPanelRect.height)
                                         
                     state.tooltipRect = GUI.Window(0xfade+1, state.tooltipRect, self.tooltipCallback, '', GUI.skin.scrollView)
-                    state.mouseInWindow = self.PreventMouseInputs(windowRect)
+                    #state.mouseInWindow = self.PreventMouseInputs(windowRect)
+                    
                     #TODO: just disable this there is no value
                     #if self.lasttooltip:
                     #    self.PreventMouseInputs(state.tooltipRect)
@@ -352,8 +368,14 @@ def showWindow(visible=True, reset=False):
 
         def Update(self):
             # Update is called less so better place to check keystate
-            ShortcutManager.evaluate(self)
-            pass
+            try:
+                state = self.state
+                state.mousePosition = Input.mousePosition
+                state.mouseInWindow = self.PreventMouseInputs(state.windowRectCurrent)
+                
+                ShortcutManager.evaluate(self)
+            except Exception, e:
+                self.PrintError(e)            
 
         def StartPanelTimer(self):
             state = self.state

@@ -322,6 +322,9 @@ def showWindow(visible=True, reset=False):
                     Input.ResetInputAxes()
         
         def OnGUI(self):
+            if Event.current.type not in (EventType.Layout, EventType.MouseDrag, EventType.Repaint, EventType.MouseDown, ):
+                return
+        
             try:
                 self.windowRect = GUI.Window(0xdeaf, self.windowRect, self.windowCallback, '', GUI.skin.scrollView)
                 
