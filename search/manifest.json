@@ -1,0 +1,9 @@
+{
+    "name": "PythonSearch",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/TheHologram/DSP_Mods/tree/main/search",
+    "description": "Python scripting example for searching through seeds",
+    "dependencies": [
+        "TheHologram-PythonConsole-1.1.2"
+    ]
+}
