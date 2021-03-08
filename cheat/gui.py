@@ -9,6 +9,7 @@ from __future__ import print_function
 from UnityEngine import GUI, GUILayout, GUIContent, GUILayoutOption
 import System
 import types
+import unity_util
 
 def unity(func):
     """ Decorator for wrapping unity calls """
@@ -311,25 +312,55 @@ class ArrayCtrl:
     def set(self, value):
         self.arr[self.idx] = value
         
+
+def ShowEditFloatValue(name, value, incr=1.0, minv=0.0, maxv=100.0, format='%.2f', buttons=False):
+    with HorizontalScope():
+        if name: GUILayout.Label(name)
+        GUILayout.FlexibleSpace()
+        oidx = format%(value)
+        nidx = GUILayout.TextField(oidx)
+        changed = oidx != nidx
+        val = max(minv, min(maxv, float(nidx)) )
+        if buttons:
+            ctrl, alt, shift = unity_util.metakey_state()
+            if incr == None:
+                import math
+                power = max(0, int(math.log(value)/math.log(10))-1) if val > 0 else 0
+                incr = 10.0 ** power
+            if shift: incr *= 10.0
+            if ctrl: incr /= 10.0
+            if GUILayout.Button(GUIContent('-', 'Reduce by '+str(incr))):
+                val = max(minv, min(maxv, val-incr) )
+                changed = True
+            if GUILayout.Button(GUIContent('+', 'Increase by '+str(incr))):
+                val = max(minv, min(maxv, val+incr) )
+                changed = True
+        if changed:
+            val = System.Convert.ChangeType(val, value.GetType())
+        return (changed, val)
+
 def ShowEditInteger(name, obj, attr, minv=0, maxv=255, buttons=False):
+    changed = False
     with HorizontalScope():
         GUILayout.Label(name)
         GUILayout.FlexibleSpace()
-        
         oidx = str(getprivateattr(obj, attr))
         nidx = GUILayout.TextField(oidx)
         if oidx != nidx:
             value = max(minv, min(maxv, int(nidx)) )
             setprivateattr(obj, attr, value)
-            
+            changed = True
         if buttons:
             value = getprivateattr(obj, attr)
             if GUILayout.Button('-'):
                 value = max(minv, min(maxv, int(value)-1) )
                 setprivateattr(obj, attr, value)
+                changed = True
             if GUILayout.Button('+'):
                 value = max(minv, min(maxv, int(value)+1) )
                 setprivateattr(obj, attr, value)                    
+                changed = True
+    return changed
 
 class FloatCtrlWrapper:
     def __init__(self, label, owner, name, **kwargs):
@@ -471,7 +502,15 @@ def ShowEditText(label, obj, attr, tooltip=None):
         nval = GUILayout.TextField(oval)
         if oval != nval:
             setprivateattr(obj, attr, nval)
-            
+
+
+def ShowLabel(label, value):
+    with HorizontalScope():
+        GUILayout.Label(GUIContent(str(label), ''))
+        GUILayout.FlexibleSpace()
+        GUILayout.Label(GUIContent(str(value), ''))
+        
+        
 def ShowBool(label, obj, attr, tooltip='', options=None):
     oval = getprivateattr(obj, attr)
     content  = GUIContent(label, tooltip)
@@ -513,7 +552,7 @@ def ShowTooltipWindow(tooltip, tooltipRect):
         skinbox.label.clipping = TextClipping.Clip
         skinbox.label.alignment = TextAnchor.UpperLeft    
     with GUISkinScope(skinbox):
-        options = Array[GUILayoutOption]([GUILayout.Width(tooltipRect.width), GUILayout.ExpandHeight(True), GUILayout.MaxHeight(tooltipRect.height)])
+        options = Array[GUILayoutOption]([GUILayout.Width(tooltipRect.width), GUILayout.ExpandHeight(False), GUILayout.MaxHeight(tooltipRect.height)])
         GUILayout.Box(tooltip, options)
 
         
@@ -564,7 +603,7 @@ def EditEnum(label, obj, attr, enum, default=None):
             setattr(obj, attr, System.Enum.Parse(enum, items[val]))
             change = True
     return change
-    
+        
 def SmallerFont():
     state = getGlobalGUIState()
     return GUISkinScope(state.tinyskin)

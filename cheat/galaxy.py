@@ -208,14 +208,19 @@ def showWindow(visible=True, reset=False):
                         planet = pcache.planet
                         if planet.orbitAroundPlanet != None:
                             tooltip += crlf + planet.displayName + ' ' +" (Moon of %s)"%(planet.orbitAroundPlanet.displayName)
-                        
+                     
+                    homestar = self.starcache[0].star
+                    dist = (homestar.position - cache.star.position).magnitude
+                     
                     tooltip += crlf 
                     tooltip += crlf + 'Luminosity:\t%.0f L'%(cache.star.luminosity*100.0)
                     tooltip += crlf + 'Mass:\t\t%.3f M'%(cache.star.mass)
                     tooltip += crlf + 'Temperature:\t%.0f K'%(cache.star.temperature)
                     tooltip += crlf + 'Spectral Class:\t%s'%(cache.star.spectr)
                     tooltip += crlf + 'Radius:\t\t%.2f R'%(cache.star.radius)
+                    tooltip += crlf + 'Distance:\t\t%.2f ly'%(dist)
                         
+                     
                     cache.tooltip = tooltip
                     
 

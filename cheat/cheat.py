@@ -393,7 +393,9 @@ def showWindow(visible=True, reset=False):
 def Reload():
     import shortcuts, gui, screens, cheat, galaxy
     reload(shortcuts); reload(gui); reload(screens); reload(cheat); reload(galaxy)
-    cheat.showWindow(reset=False)
+    import unity_util
+    ctrl, alt, shift = unity_util.metakey_state()
+    cheat.showWindow(reset=shift)
 
 @ShortcutManager.register(name='hide', shortcut='Ctrl+F8', cheat=False)
 class HideShortcut(ShortcutHandler):
